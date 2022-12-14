@@ -36,7 +36,13 @@ L4 = [880, 200, 880, 350]
 L5 = [880, 370, 880, 500]
 
 
-TEXT_COLOR = ()
+COLORS = [ (152, 60, 125), 
+                (53, 67, 203), 
+                (71, 55, 40), 
+                (0, 84, 211),
+                (199, 153, 84),
+                (46, 58, 176)
+            ]
 
 
 
@@ -95,20 +101,18 @@ while True:
         if not contour_valid:
             continue  
         area = cv.contourArea(c)
-        # print(area)
         
-        cv.line(frame, (L1[0], L1[1]), (L1[2], L1[3]), (0, 0, 255), 10)
-        cv.line(frame, (L1_R[0], L1_R[1]), (L1_R[2], L1_R[3]), (255, 0, 0), 10)
-        cv.line(frame, (L2[0], L2[1]), (L2[2], L2[3]), (0, 0, 255), 10)
-        cv.line(frame, (L2_L[0], L2_L[1]), (L2_L[2], L2_L[3]), (255, 0, 0), 10)
-        cv.line(frame, (L3[0], L3[1]), (L3[2], L3[3]), (0, 0, 255), 10)
-        cv.line(frame, (L3_R[0], L3_R[1]), (L3_R[2], L3_R[3]), (255, 0, 0), 10)
-        cv.line(frame, (L4[0], L4[1]), (L4[2], L4[3]), (0, 0, 255), 10)
-        cv.line(frame, (L5[0], L5[1]), (L5[2], L5[3]), (255, 0, 0), 10)
+        cv.line(frame, (L1[0], L1[1]), (L1[2], L1[3]), COLORS[2], 20)
+        cv.line(frame, (L1_R[0], L1_R[1]), (L1_R[2], L1_R[3]), COLORS[4], 20)
+        cv.line(frame, (L2[0], L2[1]), (L2[2], L2[3]), COLORS[2], 20)
+        cv.line(frame, (L2_L[0], L2_L[1]), (L2_L[2], L2_L[3]), COLORS[4], 20)
+        cv.line(frame, (L3[0], L3[1]), (L3[2], L3[3]), COLORS[2], 20)
+        cv.line(frame, (L3_R[0], L3_R[1]), (L3_R[2], L3_R[3]), COLORS[4], 20)
+        cv.line(frame, (L4[0], L4[1]), (L4[2], L4[3]), COLORS[2], 20)
+        cv.line(frame, (L5[0], L5[1]), (L5[2], L5[3]), COLORS[4], 20)
 
         if area > CONTOUR_AREA_LIMIT:
             contours_center_current.append(center)           
-            # contours_center_current.remove(center)
     if count <= 2:        
         for pt in contours_center_current:
             for pt2 in contours_center_prev:
@@ -138,8 +142,8 @@ while True:
 
     for object_id, pt in detections.items():
         cv.rectangle(frame, (pt[0]-20, pt[1]-20), (pt[0]+20,pt[1]+20), (0, 255, 0), 2)
-        cv.circle(frame, pt, 5, (0, 255, 0), -1)
-        cv.putText(frame, str(object_id), (pt[0], pt[1]-10),cv.FONT_HERSHEY_SIMPLEX, 0.7, (188, 222, 17), 2) 
+        # cv.circle(frame, pt, 5, (0, 255, 0), -1)
+        cv.putText(frame, str(object_id), (pt[0], pt[1]-10),cv.FONT_HERSHEY_SIMPLEX, 0.7, COLORS[5], 2) 
         if (pt[1] > L1[1]-OFFSET and pt[1] < L1[3]+OFFSET) and (pt[0] > L1[0] and pt[0] < L1[2]):
             CARS_LINE_1[str(object_id)] = pt 
         if (pt[1] > L1_R[1]-OFFSET and pt[1] < L1_R[3]+OFFSET) and (pt[0] > L1_R[0] and pt[0] < L1_R[2]):
@@ -159,18 +163,18 @@ while True:
     
     contours_center_prev = contours_center_current.copy()
 
-    cv.putText(frame, str(len(CARS_LINE_1)), ((L1[0]+((L1[2]-L1[0])//2)), L1[1]), cv.FONT_HERSHEY_SIMPLEX, 0.7, (188, 222, 17), 2)    
-    cv.putText(frame, "L1", (L1[0], L1[1]), cv.FONT_HERSHEY_SIMPLEX, 0.5, (51, 255, 255), 2)  
-    cv.putText(frame, str(len(CARS_LINE_1_R)), ((L1_R[0]+((L1_R[2]-L1_R[0])//2)), L1_R[1]), cv.FONT_HERSHEY_SIMPLEX, 0.7, (188, 222, 17), 2)    
-    cv.putText(frame, "L1_R", (L1_R[0], L1_R[1]), cv.FONT_HERSHEY_SIMPLEX, 0.5, (51, 255, 255), 2)  
+    cv.putText(frame, str(len(CARS_LINE_1)), ((L1[0]+((L1[2]-L1[0])//2)), L1[1]+5), cv.FONT_HERSHEY_SIMPLEX, 0.7, (188, 222, 17), 2)    
+    cv.putText(frame, "L1", (L1[0], L1[1]+5), cv.FONT_HERSHEY_SIMPLEX, 0.5, (51, 255, 255), 2)  
+    cv.putText(frame, str(len(CARS_LINE_1_R)), ((L1_R[0]+((L1_R[2]-L1_R[0])//2))+10, L1_R[1]+5), cv.FONT_HERSHEY_SIMPLEX, 0.7, (188, 222, 17), 2)    
+    cv.putText(frame, "L1_R", (L1_R[0], L1_R[1]+5), cv.FONT_HERSHEY_SIMPLEX, 0.5, (51, 255, 255), 2)  
     cv.putText(frame, str(len(CARS_LINE_2)), (L2[0], (L2[1]+((L2[3]-L2[1])//2))), cv.FONT_HERSHEY_SIMPLEX, 0.7, (188, 222, 17), 2)
     cv.putText(frame, "L2", (L2[0], L2[1]), cv.FONT_HERSHEY_SIMPLEX, 0.5, (51, 255, 255), 2)  
     cv.putText(frame, str(len(CARS_LINE_2_L)), (L2_L[0], (L2_L[1]+((L2_L[3]-L2_L[1])//2))), cv.FONT_HERSHEY_SIMPLEX, 0.7, (188, 222, 17), 2)
     cv.putText(frame, "L2_L", (L2_L[0], L2_L[1]), cv.FONT_HERSHEY_SIMPLEX, 0.5, (51, 255, 255), 2)  
-    cv.putText(frame, str(len(CARS_LINE_3)), (640, L3[1]), cv.FONT_HERSHEY_SIMPLEX, 0.7, (188, 222, 17), 2)
-    cv.putText(frame, "L3", (L3[0], L3[1]), cv.FONT_HERSHEY_SIMPLEX, 0.5, (51, 255, 255), 2)  
-    cv.putText(frame, str(len(CARS_LINE_3_R)), ((L3_R[0]+((L3_R[2]-L3_R[0])//2)), L3_R[1]), cv.FONT_HERSHEY_SIMPLEX, 0.7, (188, 222, 17), 2)
-    cv.putText(frame, "L3_R", (L3_R[0], L3_R[1]), cv.FONT_HERSHEY_SIMPLEX, 0.5, (51, 255, 255), 2)  
+    cv.putText(frame, str(len(CARS_LINE_3)), (640, L3[1]+5), cv.FONT_HERSHEY_SIMPLEX, 0.7, (188, 222, 17), 2)
+    cv.putText(frame, "L3", (L3[0], L3[1]+5), cv.FONT_HERSHEY_SIMPLEX, 0.5, (51, 255, 255), 2)  
+    cv.putText(frame, str(len(CARS_LINE_3_R)), ((L3_R[0]+((L3_R[2]-L3_R[0])//2))+10, L3_R[1]+5), cv.FONT_HERSHEY_SIMPLEX, 0.7, (188, 222, 17), 2)
+    cv.putText(frame, "L3_R", (L3_R[0], L3_R[1]+5), cv.FONT_HERSHEY_SIMPLEX, 0.5, (51, 255, 255), 2)  
     cv.putText(frame, str(len(CARS_LINE_4)), (L4[0], 270), cv.FONT_HERSHEY_SIMPLEX, 0.7, (188, 222, 17), 2)
     cv.putText(frame, "L4", (L4[0], L4[1]), cv.FONT_HERSHEY_SIMPLEX, 0.5, (51, 255, 255), 2)  
     cv.putText(frame, str(len(CARS_LINE_5)), (L5[0], 430), cv.FONT_HERSHEY_SIMPLEX, 0.7, (188, 222, 17), 2)
@@ -185,7 +189,7 @@ while True:
 
 
     if cv.waitKey(VIDEO_SPEED_RATE) & 0xFF == ord('q'):
-            break
+        break
 
 
 cap.release() 
