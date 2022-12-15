@@ -6,42 +6,14 @@ pedestrian
 cyclist
 
 
-
-features:
-type
-speed
-
 https://learnopencv.com/object-tracking-using-opencv-cpp-python/
 
-
-numbers of cars passing from each line
-
-
-for (x,y,w,h) in cars:
-            cv.rectangle(frame,(x,y),(x+w,y+h),(0,0,255),2)
-            cv.putText(frame, "type:", (x,y), cv.QT_FONT_NORMAL, 0.4, (0,255,0), 1, cv.LINE_AA)
-            cv.line(frame, (CENTER_LANE[0], CENTER_LANE[1]), 
-                            (CENTER_LANE[2], CENTER_LANE[3]),
-                            (0, 232, 227), 
-                            2)
-            cv.line(frame, (CL_LEFT[0], CL_LEFT[1]), 
-                            (CL_LEFT[2], CL_LEFT[3]+50),
-                            (0, 232, 227), 
-                            2)                
-            cv.line(frame, (CL_RIGHT[0], CL_RIGHT[1]), 
-                            (CL_RIGHT[2], CL_RIGHT[3]-50),
-                            (0, 232, 227), 
-                            2)
-
-            cv.line(frame, (V_LANE[0], V_LANE[1]), 
-                            (V_LANE[2], V_LANE[3]),
-                            (0, 232, 227), 
-                            2)
-        cv.imshow('Frame', frame)
-
-        if cv.waitKey(VIDEO_SPEED_RATE) & 0xFF == ord('q'):
-            break
-        # print("-------------------------------------")
-    else:
-        break
-
+        real    detected    acc
+L1 ->   55      54          0.98
+L1_R =  36      37          0.97
+L2 =    26      24          0.92
+L2_L =  23      34          0.67
+L3 =    51      48          0.94
+L3_R =  38      48          0.79
+L4 =    10      6           0.6
+L5 =    25      26          0.96
