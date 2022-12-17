@@ -77,6 +77,7 @@ def calculate_distance_between_point_and_line(x, y, x1, y1, x2, y2):
 
 
 while True:
+    timer = cv.getTickCount()
     ret, frame = cap.read()
     # (h,w, _) = frame.shape
     # print(f'{h} - {w}')
@@ -214,7 +215,10 @@ while True:
     cv.putText(frame, "L4", (L4[0]-10, L4[1]), cv.FONT_HERSHEY_SIMPLEX, 0.5, (51, 255, 255), 2)  
     cv.putText(frame, str(len(CARS_LINE_5)), (L5[0]-5, 430), cv.FONT_HERSHEY_SIMPLEX, 0.7, (188, 222, 17), 2)
     cv.putText(frame, "L5", (L5[0]-5, L5[1]+5), cv.FONT_HERSHEY_SIMPLEX, 0.5, (51, 255, 255), 2)  
-
+    
+    fps = int(cv.getTickFrequency()/(cv.getTickCount() -timer))    
+    cv.putText(frame, f'fps: {str(fps)}', (350,20), cv.FONT_HERSHEY_SIMPLEX, 0.5, (51, 255, 255), 2)
+    
     cv.imshow("Frame", frame)
     # cv.imshow("roi", roi2)
     # cv.imshow("Mask", mask)
