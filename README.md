@@ -10,10 +10,10 @@
 
 
 
-![alt text](https://github.com/avni25/crossroads/blob/master/ss1.jpg)
+![alt text](https://github.com/avni25/crossroads/blob/main/ss1.png)
 
-![alt text](https://github.com/avni25/crossroads/blob/master/ss2.jpg)
+![alt text](https://github.com/avni25/crossroads/blob/main/ss2.png)
 
-![alt text](https://github.com/avni25/crossroads/blob/master/ss3.jpg)
+![alt text](https://github.com/avni25/crossroads/blob/main/ss3.png)
 
 
