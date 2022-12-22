@@ -1,118 +1,242 @@
 import cv2 as cv
 import numpy as np
+import math
 
 
-VIDEO_SPEED_RATE = 20   # higher value, slower video (25ms is the normal speed value)
-VIDEO_URL = "videos/intersection-5.mp4"
+OFFSET = 3                  # cizgilerin etrafinda olusturalacak olan dortgenin genisliğini belirlemede kullanılacak
+DISTANCE_PER_FRAME = 30     # Object Tracking icin noktanin onceki ile simdiki konumları arasındaki max fark
+VIDEO_SPEED_RATE = 25       # video oynatma hızı
+CONTOUR_AREA_LIMIT = 1200   # tespit edilen contour lari filtrelemek icin alan limiti uygulanmıstır
+detections = {}             # tespit edilen arabalar id ile birlikte dictionary olarak tutar
+track_id = 0                # track id her tespit edilen ve hareket eden araba icin atanır.
+contours_center_current = []    # suan ki frame de tespit edilen contour ların orta noktalarını tutat dizi
+contours_center_prev = []       # bir onceki frame de tespit edilen contour ların orta noktalarını tutat dizi
+COUNT = 0                   # ilk frame i gecmek icin kullanılmıstır. cunku ilk framde bir onceki noktalarını tutan dizi bostur
+
+
+CARS_LINE_1 = {}        # Line 1 den gecen arabalrı id ve orta noktalarını saklar
+CARS_LINE_1_R = {}      # Line 1R den gecen arabalrı id ve orta noktalarını saklar
+CARS_LINE_2={}          # Line 2 den gecen arabalrı id ve orta noktalarını saklar
+CARS_LINE_2_L={}        # Line 2L den gecen arabalrı id ve orta noktalarını saklar
+CARS_LINE_3={}          # Line 3 den gecen arabalrı id ve orta noktalarını saklar
+CARS_LINE_3_R={}        # Line 3R den gecen arabalrı id ve orta noktalarını saklar
+CARS_LINE_4={}          # Line 4 den gecen arabalrı id ve orta noktalarını saklar
+CARS_LINE_5={}          # Line 5 den gecen arabalrı id ve orta noktalarını saklar
+
+
+# lines coordinates
+L1 = [510, 600, 600, 600]   # L1 arabaların sayılacagi cizginin koordinatlari
+L1_R = [610, 600, 800, 600] # L1R arabaların sayılacagi cizginin koordinatlari
+L2 = [350, 230, 350, 310]   # L2 arabaların sayılacagi cizginin koordinatlari
+L2_L = [350, 320, 350, 480] # L2L arabaların sayılacagi cizginin koordinatlari
+L3 = [510, 100, 670, 100]   # L3 arabaların sayılacagi cizginin koordinatlari
+L3_R = [680, 100, 750, 100] # L3r arabaların sayılacagi cizginin koordinatlari
+L4 = [880, 200, 880, 350]   # L4 arabaların sayılacagi cizginin koordinatlari
+L5 = [880, 370, 880, 500]   # L5 arabaların sayılacagi cizginin koordinatlari
+
+
+COLORS = [ (152, 60, 125),          # purple
+                (53, 67, 203),      
+                (71, 55, 40), 
+                (0, 84, 211),
+                (199, 153, 84),
+                (46, 58, 176),
+                (51, 255, 230)      # 6-yellow
+            ]
 
 
 
-OFFSET = 10
-LANE_WIDTH = 90
-CENTER_LANE = [50,50,1200,650]
-V_LANE = [50,700, 930, 150]
-CL_RIGHT = [i-LANE_WIDTH for i in CENTER_LANE]
-CL_LEFT = [i+LANE_WIDTH for i in CENTER_LANE]
 
-MATCHES = []
-CARS_L1=0
-CARS_L2=0
-CARS_L3=0
-CARS_L4=0
+cap = cv.VideoCapture("videos/intersection-8-720-b.mp4")  # videoyou dondurur
+obj_detector = cv.createBackgroundSubtractorMOG2(history=100, varThreshold=50)
+# tracker = cv.legacy.MultiTracker_create()
 
-L1 =[470, 440, 600, 500] 
-L2 = [440, 320, 500, 300]
-L3 = [690, 390, 740, 360]
+'''
+    dortgenin orta noktasini bulur, x, y degerlerinin dondurur
+'''
+def get_center(x,y,w,h):
+    return x + int(w/2), y + int(h/2)
 
-cap = cv.VideoCapture(VIDEO_URL)
-car_cascade = cv.CascadeClassifier('cars.xml')
+'''
+    iki noktasi verilen dogrunun eğimini hesaplar
+'''
+def calculate_line_slope(x1,y1,x2,y2):
+    return (y2-y1)/(x2-x1)
 
-print(cv.__version__)
-tracker = cv.legacy_TrackerCSRT.create()
-
-ret, frame = cap.read()
-bbox=(400,200, 800, 600)
-# bbox = cv.selectROI(frame, False)
-ok=tracker.init(frame, bbox)
-
-def center_point(x,y,w,h):
-    x1 = int(w / 2)
-    y1 = int(h / 2)
- 
-    cx = x + x1
-    cy = y + y1
-    return cx, cy
+'''
+if m negative and result negative point is on the right side of the line
+if m positive and result positive point is on the right side of the line
+'''
+def calculate_distance_between_point_and_line(x, y, x1, y1, x2, y2):
+    m = calculate_line_slope(x1,y1,x2,y2)
+    f = (m*x) - (m*x2) - y + y2
+    s = math.sqrt(m**2 + 1)    
+    return f / s
 
 
-if (cap.isOpened()== False):
-    print("Error opening video file")
 
-# Read until video is completed
-while(cap.isOpened()):
-    ret, frame = cap.read()
-    # print(f'ret type: {type(ret)}, frame type: {type(frame)}')
-    roi = frame[200: 600, 300: 900]
-    
+
+while True:
     timer = cv.getTickCount()
-    ret, bbox = tracker.update(frame)
-
-    if ret == True:    
-        gray = cv.cvtColor(frame, cv.COLOR_BGR2GRAY)
-        blurred = cv.GaussianBlur(gray, (9,9), 0)
-        ced = cv.Canny(blurred, 50, 150)
-        ret2, th = cv.threshold(gray, 20, 255, cv.THRESH_BINARY)
-        contours, hierarchy = cv.findContours(th, cv.RETR_TREE, cv.CHAIN_APPROX_SIMPLE)
+    ret, frame = cap.read()
+    # (h,w, _) = frame.shape
+    # print(f'{h} - {w}')
+    COUNT += 1
+    # extract region of Interest
+    # roi = frame[200: 600, 300: 900]
+    # roi2 = frame[200:650, 200:1200]
+    # ------------------------IMAGE PRE-PROCESSING-------------------------------------
+    kernel = np.ones((8, 8), np.uint8)
+    gray = cv.cvtColor(frame, cv.COLOR_BGR2GRAY)    # frame i grayscale a cevirir
+    blurred = cv.GaussianBlur(gray, (5,5), 0)       # grayscalei bulanıklastırır
+    mask = obj_detector.apply(blurred)              # bulanık framei maskeler. siyah beyaz goruntu cıkar
+    # ced = cv.Canny(mask, 50, 150)                # bulanık framei edge detection yapar
+    # filtered = cv.fastNlMeansDenoising(mask, None, 20, 7, 21) 
+    # erosion = cv.erode(mask, kernel, iterations=1)
+    dilated = cv.dilate(mask, kernel, iterations=1) # maskelenmis framede beyazla tespit edilen objeleri genisletir
+    # _, dilated = cv.threshold(dilated, 254, 255, cv.THRESH_BINARY)
+    _, th = cv.threshold(mask, 254, 255, cv.THRESH_BINARY)
+    contours, _ = cv.findContours(dilated, cv.RETR_TREE, cv.CHAIN_APPROX_SIMPLE)    # koseleri olan objeleri tespit eder
+    # cv.drawContours(frame, contours, -1, (0,255,0), 3)
+    # ------------------------------------------------------------------------------
+    # ------------------------------------------------------------------------------
+    # ------------------------------------------------------------------------------ 
+    for(i, c) in enumerate(contours):   # tespit edilen herbir contour(obje) iterasyona alınarak islem yapılır
+        (x, y, w, h) = cv.boundingRect(c) # contour un x,y,w,h koordinatlarını dondurur
+        contour_valid = (w >= 30) and (     # eger genisliği 30 px den kucukse isleme almaz/atlar
+            h >= 30)
         
+        center = get_center(x,y,w,h) # contourun orta noktasını dondurur
+
+        if not contour_valid:
+            continue  
+        area = cv.contourArea(c) # contourun alanını hesaplar
         
-        for cnt in contours:
-            cv.drawContours(frame, [cnt], -1, (0,255,0), 2)
-        # print(contours)
-        # Detects cars of different sizes in the input image
-        cars = car_cascade.detectMultiScale(blurred, 1.1, 1)
-        # print(cars)
+        # info panel dogruluk oranlarını gosterir.
+        cv.rectangle(frame, (190, 10), (350, 200), COLORS[0], -1)
+        cv.putText(frame, "Accuracy", (250, 20),cv.FONT_HERSHEY_SIMPLEX, 0.5, COLORS[6], 1)
+        cv.putText(frame, "L1:      0.98", (200, 40),cv.FONT_HERSHEY_SIMPLEX, 0.5, COLORS[6], 1)
+        cv.putText(frame, "L1_R:    0.97", (200, 60),cv.FONT_HERSHEY_SIMPLEX, 0.5, COLORS[6], 1)
+        cv.putText(frame, "L2:      0.92", (200, 80),cv.FONT_HERSHEY_SIMPLEX, 0.5, COLORS[6], 1)
+        cv.putText(frame, "L2_L:    0.67", (200, 100),cv.FONT_HERSHEY_SIMPLEX, 0.5, COLORS[6], 1)
+        cv.putText(frame, "L3:      0.94", (200, 120),cv.FONT_HERSHEY_SIMPLEX, 0.5, COLORS[6], 1)
+        cv.putText(frame, "L3_L:    0.79", (200, 140),cv.FONT_HERSHEY_SIMPLEX, 0.5, COLORS[6], 1)
+        cv.putText(frame, "L4:      0.6", (200, 160),cv.FONT_HERSHEY_SIMPLEX, 0.5, COLORS[6], 1)
+        cv.putText(frame, "L5:      0.96", (200, 180),cv.FONT_HERSHEY_SIMPLEX, 0.5, COLORS[6], 1)
 
-        for(i, c) in enumerate(contours):
-            (x, y, w, h) = cv.boundingRect(c)
-            contour_valid = (w >= 5) and (
-                h >= 5)
-        
-            if not contour_valid:
-                continue    
-            
-        
-            cv.rectangle(roi, (x-10, y-10), (x+w+10, y+h+10), (255, 0, 0), 2)
-            cv.line(frame, (L1[0], L1[1]), (L1[2], L1[3]), (0, 0, 255), 2)
-            cv.line(frame, (L2[0], L2[1]), (L2[2], L2[3]), (0, 0, 255), 2)
-            cv.line(frame, (L3[0], L3[1]), (L3[2], L3[3]), (0, 0, 255), 2)
-            cv.circle(frame, (10,10), 5, (255, 0, 0), -1)
+        cv.line(frame, (L1[0], L1[1]), (L1[2], L1[3]), COLORS[2], 20)
+        cv.line(frame, (L1_R[0], L1_R[1]), (L1_R[2], L1_R[3]), COLORS[4], 20)
+        cv.line(frame, (L2[0], L2[1]), (L2[2], L2[3]), COLORS[2], 20)
+        cv.line(frame, (L2_L[0], L2_L[1]), (L2_L[2], L2_L[3]), COLORS[4], 20)
+        cv.line(frame, (L3[0], L3[1]), (L3[2], L3[3]), COLORS[2], 20)
+        cv.line(frame, (L3_R[0], L3_R[1]), (L3_R[2], L3_R[3]), COLORS[4], 20)
+        cv.line(frame, (L4[0], L4[1]), (L4[2], L4[3]), COLORS[2], 20)
+        cv.line(frame, (L5[0], L5[1]), (L5[2], L5[3]), COLORS[4], 20)
 
-            centrolid = center_point(x, y, w, h)
-            MATCHES.append(centrolid)
-            cv.circle(frame, centrolid, 5, (0, 255, 0), -1)
-            cx, cy = center_point(x, y, w, h)
-            for (x, y) in MATCHES:
-                if (y < (L1[3] + OFFSET) and y > (L1[3] - OFFSET)) and (x < (L1[2] + OFFSET) and x > (L1[2] - OFFSET)):
-                    CARS_L1 = CARS_L1+1
-                    MATCHES.remove((x, y))
-                
+        # contour alanı belirlenen limitten buyukse listeye ekler. araba olma ihtimali vardir
+        if area > CONTOUR_AREA_LIMIT:   
+            contours_center_current.append(center)  
+            # cv.rectangle(frame, (x,y), (x+w, y+h), COLORS[0], 2)
+        else:
+            continue
+    # -------------------------------------------------------------------------------
+    if COUNT <= 2:        
+        for pt in contours_center_current:
+            for pt2 in contours_center_prev:
+                distance = math.hypot(pt2[0]-pt[0], pt2[1]-pt[1])
+                if distance < DISTANCE_PER_FRAME:
+                    detections[track_id] = pt
+                    track_id += 1
+                # if distance == 0:
+                #     try:
+                #         detections.pop(track_id)
+                #     except:
+                #         print("")
+    else:
+        detections_copy =  detections.copy()
+        contours_center_current_copy = contours_center_current.copy()
+        for object_id, pt2 in detections_copy.items():
+            obj_exists = False
+            for pt in contours_center_current_copy:
+                distance = math.hypot(pt2[0]-pt[0], pt2[1]-pt[1])
+                if distance < DISTANCE_PER_FRAME:
+                    detections[object_id] = pt
+                    obj_exists = True
+                    if pt in contours_center_current:
+                        contours_center_current.remove(pt)
+                    continue
+                # if distance == 0:
+                #     try:
+                #         detections.pop(object_id)
+                #     except:
+                #         print("")
+            if not obj_exists:
+                detections.pop(object_id)
+
+        for pt in contours_center_current:
+            detections[track_id] = pt 
+            track_id +=1
+    # ----------------------------------------------------------------------------
+    for object_id, pt in detections.items():
+        cv.rectangle(frame, (pt[0]-20, pt[1]-20), (pt[0]+20,pt[1]+20), (0, 255, 0), 2)
+        cv.circle(frame, pt, 5, (0, 255, 0), -1)
+        cv.rectangle(frame, (pt[0]-20, pt[1]-32),(pt[0]+10, pt[1]-20), COLORS[0], -1)
+        cv.putText(frame, str(object_id), (pt[0]-20, pt[1]-20),cv.FONT_HERSHEY_SIMPLEX, 0.5, COLORS[6], 2) 
+        if (pt[1] > L1[1]-OFFSET and pt[1] < L1[3]+OFFSET) and (pt[0] > L1[0] and pt[0] < L1[2]):
+            CARS_LINE_1[str(object_id)] = pt 
+        if (pt[1] > L1_R[1]-OFFSET and pt[1] < L1_R[3]+OFFSET) and (pt[0] > L1_R[0] and pt[0] < L1_R[2]):
+            CARS_LINE_1_R[str(object_id)] = pt  
+        if (pt[0] < L2[0] + OFFSET and pt[0] > L2[2] - OFFSET) and (pt[1]>L2[1] and pt[1]<L2[3]):
+            CARS_LINE_2[str(object_id)] = pt
+        if (pt[0] < L2_L[0] + OFFSET+10 and pt[0] > L2_L[2] - OFFSET) and (pt[1]>L2_L[1] and pt[1]<L2_L[3]):
+            CARS_LINE_2_L[str(object_id)] = pt
+        if (pt[1] > L3[1]-OFFSET and pt[1] < L3[3]+OFFSET) and (pt[0] > L3[0] and pt[0] < L3[2]):
+            CARS_LINE_3[str(object_id)] = pt
+        if (pt[1] > L3_R[1]-OFFSET and pt[1] < L3_R[3]+OFFSET+20) and (pt[0] > L3_R[0] and pt[0] < L3_R[2]):
+            CARS_LINE_3_R[str(object_id)] = pt    
+        if (pt[0] < L4[0]+ OFFSET and pt[0] > L4[2] - OFFSET) and (pt[1]>L4[1] and pt[1]<L4[3]):
+            CARS_LINE_4[str(object_id)] = pt
+        if (pt[0] < L5[0] + OFFSET+10 and pt[0] > L5[2] - OFFSET) and (pt[1]>L5[1] and pt[1]<L5[3]):
+            CARS_LINE_5[str(object_id)] = pt
+    
+    contours_center_prev = contours_center_current.copy()
+
+    cv.putText(frame, str(len(CARS_LINE_1)), ((L1[0]+((L1[2]-L1[0])//2)), L1[1]+5), cv.FONT_HERSHEY_SIMPLEX, 0.7, (188, 222, 17), 2)    
+    cv.putText(frame, "L1", (L1[0], L1[1]+5), cv.FONT_HERSHEY_SIMPLEX, 0.5, (51, 255, 255), 2)  
+    cv.putText(frame, str(len(CARS_LINE_1_R)), ((L1_R[0]+((L1_R[2]-L1_R[0])//2))+10, L1_R[1]+5), cv.FONT_HERSHEY_SIMPLEX, 0.7, (188, 222, 17), 2)    
+    cv.putText(frame, "L1_R", (L1_R[0], L1_R[1]+5), cv.FONT_HERSHEY_SIMPLEX, 0.5, (51, 255, 255), 2)  
+    cv.putText(frame, str(len(CARS_LINE_2)), (L2[0]-5, (L2[1]+((L2[3]-L2[1])//2))), cv.FONT_HERSHEY_SIMPLEX, 0.7, (188, 222, 17), 2)
+    cv.putText(frame, "L2", (L2[0]-10, L2[1]+5), cv.FONT_HERSHEY_SIMPLEX, 0.5, (51, 255, 255), 2)  
+    cv.putText(frame, str(len(CARS_LINE_2_L)), (L2_L[0]-5, (L2_L[1]+((L2_L[3]-L2_L[1])//2))), cv.FONT_HERSHEY_SIMPLEX, 0.7, (188, 222, 17), 2)
+    cv.putText(frame, "L2_L", (L2_L[0]-10, L2_L[1]), cv.FONT_HERSHEY_SIMPLEX, 0.5, (51, 255, 255), 2)  
+    cv.putText(frame, str(len(CARS_LINE_3)), (640, L3[1]+5), cv.FONT_HERSHEY_SIMPLEX, 0.7, (188, 222, 17), 2)
+    cv.putText(frame, "L3", (L3[0], L3[1]+5), cv.FONT_HERSHEY_SIMPLEX, 0.5, (51, 255, 255), 2)  
+    cv.putText(frame, str(len(CARS_LINE_3_R)), ((L3_R[0]+((L3_R[2]-L3_R[0])//2))+10, L3_R[1]+5), cv.FONT_HERSHEY_SIMPLEX, 0.7, (188, 222, 17), 2)
+    cv.putText(frame, "L3_R", (L3_R[0], L3_R[1]+5), cv.FONT_HERSHEY_SIMPLEX, 0.5, (51, 255, 255), 2)  
+    cv.putText(frame, str(len(CARS_LINE_4)), (L4[0]-5, 270), cv.FONT_HERSHEY_SIMPLEX, 0.7, (188, 222, 17), 2)
+    cv.putText(frame, "L4", (L4[0]-10, L4[1]), cv.FONT_HERSHEY_SIMPLEX, 0.5, (51, 255, 255), 2)  
+    cv.putText(frame, str(len(CARS_LINE_5)), (L5[0]-5, 430), cv.FONT_HERSHEY_SIMPLEX, 0.7, (188, 222, 17), 2)
+    cv.putText(frame, "L5", (L5[0]-5, L5[1]+5), cv.FONT_HERSHEY_SIMPLEX, 0.5, (51, 255, 255), 2)  
+
+    fps = int(cv.getTickFrequency()/(cv.getTickCount() - timer))    
+    cv.putText(frame, f'fps: {str(fps)}', (350,20), cv.FONT_HERSHEY_SIMPLEX, 0.5, (51, 255, 255), 2)
+
+    cv.imshow("Frame", frame)
+    # cv.imshow("roi", roi2)
+    # cv.imshow("Mask", mask)
+    # cv.imshow("filtered", filtered)
+    # cv.imshow("dilated",dilated)
+    # cv.imshow("erosion",erosion)
 
 
-        cv.putText(frame, "Total Cars Detected: " + str(CARS_L2), (10, 90), 
-                                                        cv.FONT_HERSHEY_SIMPLEX, 1,
-                                                        (0, 170, 0), 2)
-        cv.imshow("qwe", frame)
-        # cv.imshow("qwe", blurred)
-        # cv.imshow("th", th)
+    if cv.waitKey(VIDEO_SPEED_RATE) & 0xFF == ord('q'):
+        break
 
 
-        if cv.waitKey(VIDEO_SPEED_RATE) & 0xFF == ord('q'):
-            break
-# When everything done, release
-# the video capture object
-cap.release()
- 
+cap.release() 
 cv.destroyAllWindows()
 
 
 
-    
+
+
