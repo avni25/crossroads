@@ -1,7 +1,7 @@
 # crossroads
 
 
-
+this program counts the cars passing from specified lines.
 
 
 
