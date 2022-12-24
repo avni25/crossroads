@@ -37,7 +37,7 @@ def get_center(x,y,w,h):
 
 while True:
     ret, frame = cap.read()
-    
+    frame2 = frame.copy()
     if not isSelected:
         roi = list(cv.selectROI("qwe", frame))        
         print(roi)
@@ -63,6 +63,7 @@ while True:
     _, th = cv.threshold(mask, 254, 255, cv.THRESH_BINARY)
     contours, _ = cv.findContours(dilated, cv.RETR_TREE, cv.CHAIN_APPROX_SIMPLE)    # koseleri olan objeleri tespit eder
 
+    
 
     for(i, c) in enumerate(contours):   # tespit edilen herbir contour(obje) iterasyona alınarak islem yapılır
         (x, y, w, h) = cv.boundingRect(c) # contour un x,y,w,h koordinatlarını dondurur
@@ -80,7 +81,6 @@ while True:
                 cv.line(frame, (x1, y1), (x2, y2), COLORS[2], 20)        
             except:
                 pass
-        
         # contour alanı belirlenen limitten buyukse listeye ekler. araba olma ihtimali vardir
         if area > CONTOUR_AREA_LIMIT:   
             contours_center_current.append(center)  
@@ -136,8 +136,11 @@ while True:
 
     cv.putText(frame, str(len(CARS)), (x2,y2), cv.FONT_HERSHEY_SIMPLEX, 1.0, COLORS[6], 3) 
 
-    cv.imshow("fr",frame)
-    
+    alpha = 0.3
+    frame2 = cv.addWeighted(frame2, alpha, frame, 1-alpha, 0)
+
+    # cv.imshow("fr",frame)
+    cv.imshow("fr2",frame2)
 
     if cv.waitKey(25) & 0xFF == ord('q'):
         break
