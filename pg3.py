@@ -34,8 +34,9 @@ L3_R = [680, 100, 750, 100] # L3r arabaların sayılacagi cizginin koordinatlari
 L4 = [880, 200, 880, 350]   # L4 arabaların sayılacagi cizginin koordinatlari
 L5 = [880, 370, 880, 500]   # L5 arabaların sayılacagi cizginin koordinatlari
 
+lines = [L1, L1_R, L2, L2_L, L3, L3_R, L4, L5]
 
-COLORS = [ (152, 60, 125),          # purple
+COLORS = [      (152, 60, 125),          # purple
                 (53, 67, 203),      
                 (71, 55, 40), 
                 (0, 84, 211),
@@ -73,8 +74,27 @@ def calculate_distance_between_point_and_line(x, y, x1, y1, x2, y2):
     s = math.sqrt(m**2 + 1)    
     return f / s
 
+def draw_panel(frame):
+    cv.rectangle(frame, (190, 10), (350, 200), COLORS[0], -1)
+    cv.putText(frame, "Accuracy", (250, 20),cv.FONT_HERSHEY_SIMPLEX, 0.5, COLORS[6], 1)
+    cv.putText(frame, "L1:      0.98", (200, 40),cv.FONT_HERSHEY_SIMPLEX, 0.5, COLORS[6], 1)
+    cv.putText(frame, "L1_R:    0.97", (200, 60),cv.FONT_HERSHEY_SIMPLEX, 0.5, COLORS[6], 1)
+    cv.putText(frame, "L2:      0.92", (200, 80),cv.FONT_HERSHEY_SIMPLEX, 0.5, COLORS[6], 1)
+    cv.putText(frame, "L2_L:    0.67", (200, 100),cv.FONT_HERSHEY_SIMPLEX, 0.5, COLORS[6], 1)
+    cv.putText(frame, "L3:      0.94", (200, 120),cv.FONT_HERSHEY_SIMPLEX, 0.5, COLORS[6], 1)
+    cv.putText(frame, "L3_L:    0.79", (200, 140),cv.FONT_HERSHEY_SIMPLEX, 0.5, COLORS[6], 1)
+    cv.putText(frame, "L4:      0.6", (200, 160),cv.FONT_HERSHEY_SIMPLEX, 0.5, COLORS[6], 1)
+    cv.putText(frame, "L5:      0.96", (200, 180),cv.FONT_HERSHEY_SIMPLEX, 0.5, COLORS[6], 1)
 
 
+def draw_lines2(frame):
+    color = COLORS[4]
+    for i, line  in enumerate(lines):
+        if i%2 == 0:
+            color = COLORS[2]
+        else:
+            color = COLORS[4]
+        cv.line(frame, (line[0], line[1]), (line[2], line[3]), color, 20)
 
 while True:
     timer = cv.getTickCount()
@@ -98,42 +118,23 @@ while True:
     _, th = cv.threshold(mask, 254, 255, cv.THRESH_BINARY)
     contours, _ = cv.findContours(dilated, cv.RETR_TREE, cv.CHAIN_APPROX_SIMPLE)    # koseleri olan objeleri tespit eder
     # cv.drawContours(frame, contours, -1, (0,255,0), 3)
+    
+    # info panel dogruluk oranlarını gosterir.
+    # draw_panel(frame)
+    draw_lines2(frame)
     # ------------------------------------------------------------------------------
     # ------------------------------------------------------------------------------
     # ------------------------------------------------------------------------------ 
-    for(i, c) in enumerate(contours):   # tespit edilen herbir contour(obje) iterasyona alınarak islem yapılır
-        (x, y, w, h) = cv.boundingRect(c) # contour un x,y,w,h koordinatlarını dondurur
-        contour_valid = (w >= 30) and (     # eger genisliği 30 px den kucukse isleme almaz/atlar
-            h >= 30)
+    for contour in contours:   # tespit edilen herbir contour(obje) iterasyona alınarak islem yapılır
+        (x, y, w, h) = cv.boundingRect(contour) # contour un x,y,w,h koordinatlarını dondurur
+        contour_valid = (w >= 30) and (h >= 30)   # eger genisliği 30 px den kucukse isleme almaz/atlar
         
-        center = get_center(x,y,w,h) # contourun orta noktasını dondurur
-
         if not contour_valid:
-            continue  
-        area = cv.contourArea(c) # contourun alanını hesaplar
-        
+            continue 
+         
+        center = get_center(x,y,w,h) # contourun orta noktasını dondurur
+        area = cv.contourArea(contour) # contourun alanını hesaplar        
         # cv.rectangle(frame, (x, y), (x+w,y+h), (0, 255, 0), 2)
-
-        # info panel dogruluk oranlarını gosterir.
-        cv.rectangle(frame, (190, 10), (350, 200), COLORS[0], -1)
-        cv.putText(frame, "Accuracy", (250, 20),cv.FONT_HERSHEY_SIMPLEX, 0.5, COLORS[6], 1)
-        cv.putText(frame, "L1:      0.98", (200, 40),cv.FONT_HERSHEY_SIMPLEX, 0.5, COLORS[6], 1)
-        cv.putText(frame, "L1_R:    0.97", (200, 60),cv.FONT_HERSHEY_SIMPLEX, 0.5, COLORS[6], 1)
-        cv.putText(frame, "L2:      0.92", (200, 80),cv.FONT_HERSHEY_SIMPLEX, 0.5, COLORS[6], 1)
-        cv.putText(frame, "L2_L:    0.67", (200, 100),cv.FONT_HERSHEY_SIMPLEX, 0.5, COLORS[6], 1)
-        cv.putText(frame, "L3:      0.94", (200, 120),cv.FONT_HERSHEY_SIMPLEX, 0.5, COLORS[6], 1)
-        cv.putText(frame, "L3_L:    0.79", (200, 140),cv.FONT_HERSHEY_SIMPLEX, 0.5, COLORS[6], 1)
-        cv.putText(frame, "L4:      0.6", (200, 160),cv.FONT_HERSHEY_SIMPLEX, 0.5, COLORS[6], 1)
-        cv.putText(frame, "L5:      0.96", (200, 180),cv.FONT_HERSHEY_SIMPLEX, 0.5, COLORS[6], 1)
-
-        cv.line(frame, (L1[0], L1[1]), (L1[2], L1[3]), COLORS[2], 20)
-        cv.line(frame, (L1_R[0], L1_R[1]), (L1_R[2], L1_R[3]), COLORS[4], 20)
-        cv.line(frame, (L2[0], L2[1]), (L2[2], L2[3]), COLORS[2], 20)
-        cv.line(frame, (L2_L[0], L2_L[1]), (L2_L[2], L2_L[3]), COLORS[4], 20)
-        cv.line(frame, (L3[0], L3[1]), (L3[2], L3[3]), COLORS[2], 20)
-        cv.line(frame, (L3_R[0], L3_R[1]), (L3_R[2], L3_R[3]), COLORS[4], 20)
-        cv.line(frame, (L4[0], L4[1]), (L4[2], L4[3]), COLORS[2], 20)
-        cv.line(frame, (L5[0], L5[1]), (L5[2], L5[3]), COLORS[4], 20)
 
         # contour alanı belirlenen limitten buyukse listeye ekler. araba olma ihtimali vardir
         if area > CONTOUR_AREA_LIMIT:   
@@ -141,43 +142,30 @@ while True:
             # cv.rectangle(frame, (x,y), (x+w, y+h), COLORS[0], 2)
         else:
             continue
-    # -------------------------------------------------------------------------------
-    if COUNT <= 2:        
-        for pt in contours_center_current:
-            for pt2 in contours_center_prev:
-                distance = math.hypot(pt2[0]-pt[0], pt2[1]-pt[1])
-                if distance < DISTANCE_PER_FRAME:
-                    detections[track_id] = pt
-                    track_id += 1
-                # if distance == 0:
-                #     try:
-                #         detections.pop(track_id)
-                #     except:
-                #         print("")
-    else:
-        detections_copy =  detections.copy()
-        contours_center_current_copy = contours_center_current.copy()
-        for object_id, pt2 in detections_copy.items():
-            obj_exists = False
-            for pt in contours_center_current_copy:
-                distance = math.hypot(pt2[0]-pt[0], pt2[1]-pt[1])
-                if distance < DISTANCE_PER_FRAME:
-                    detections[object_id] = pt
-                    obj_exists = True
-                    if pt in contours_center_current:
-                        contours_center_current.remove(pt)
-                    continue
-                # if distance == 0:
-                #     try:
-                #         detections.pop(object_id)
-                #     except:
-                #         print("")
-            if not obj_exists:
-                detections.pop(object_id)
+    # -----------------------------OBJECT TRACKING--------------------------------------------------
+    
+    detections_copy =  detections.copy()
+    contours_center_current_copy = contours_center_current.copy()
+    for object_id, pt2 in detections_copy.items():
+        obj_exists = False
+        for pt in contours_center_current_copy:
+            distance = math.hypot(pt2[0]-pt[0], pt2[1]-pt[1])
+            if distance < DISTANCE_PER_FRAME:
+                detections[object_id] = pt
+                obj_exists = True
+                if pt in contours_center_current:
+                    contours_center_current.remove(pt)
+                continue
+            
+        if not obj_exists:
+            detections.pop(object_id)
 
-        for pt in contours_center_current:
-            detections[track_id] = pt 
-            track_id +=1
+    for pt in contours_center_current:
+        detections[track_id] = pt 
+        track_id +=1
+    
+    contours_center_prev = contours_center_current.copy()
+    
     # ----------------------------------------------------------------------------
     for object_id, pt in detections.items():
         cv.rectangle(frame, (pt[0]-20, pt[1]-20), (pt[0]+20,pt[1]+20), (0, 255, 0), 2)
@@ -201,7 +189,6 @@ while True:
         if (pt[0] < L5[0] + OFFSET+10 and pt[0] > L5[2] - OFFSET) and (pt[1]>L5[1] and pt[1]<L5[3]):
             CARS_LINE_5[str(object_id)] = pt
     
-    contours_center_prev = contours_center_current.copy()
 
     cv.putText(frame, str(len(CARS_LINE_1)), ((L1[0]+((L1[2]-L1[0])//2)), L1[1]+5), cv.FONT_HERSHEY_SIMPLEX, 0.7, (188, 222, 17), 2)    
     cv.putText(frame, "L1", (L1[0], L1[1]+5), cv.FONT_HERSHEY_SIMPLEX, 0.5, (51, 255, 255), 2)  
@@ -237,6 +224,7 @@ while True:
 
 cap.release() 
 cv.destroyAllWindows()
+
 
 
 
