@@ -4,7 +4,7 @@ import math
 
 
 
-cap = cv.VideoCapture("videos/intersection-8-720-b.mp4") 
+cap = cv.VideoCapture("videos/intersection-8-720-b.mp4") # 8-720-b
 obj_detector = cv.createBackgroundSubtractorMOG2(history=100, varThreshold=50)
 
 
@@ -62,18 +62,17 @@ while True:
     dilated = cv.dilate(mask, kernel, iterations=1) # maskelenmis framede beyazla tespit edilen objeleri genisletir
     _, th = cv.threshold(mask, 254, 255, cv.THRESH_BINARY)
     contours, _ = cv.findContours(dilated, cv.RETR_TREE, cv.CHAIN_APPROX_SIMPLE)    # koseleri olan objeleri tespit eder
-
+    # cv.drawContours(frame, contours, -1, (0,255,0), 3)
     
 
     for(i, c) in enumerate(contours):   # tespit edilen herbir contour(obje) iterasyona alınarak islem yapılır
         (x, y, w, h) = cv.boundingRect(c) # contour un x,y,w,h koordinatlarını dondurur
-        contour_valid = (w >= 30) and (     # eger genisliği 30 px den kucukse isleme almaz/atlar
-            h >= 30)
-        
-        center = get_center(x,y,w,h) # contourun orta noktasını dondurur
+        contour_valid = (w >= 30) and (h >= 30)     # eger genisliği 30 px den kucukse isleme almaz/atlar
 
         if not contour_valid:
             continue  
+        
+        center = get_center(x,y,w,h) # contourun orta noktasını dondurur
         area = cv.contourArea(c) # contourun alanını hesaplar
         
         if isSelected:            
@@ -86,38 +85,29 @@ while True:
             contours_center_current.append(center)  
         else:
             continue
-    # -------------------------------------------------------------------------------
-    if COUNT <= 1:        
-        for pt in contours_center_current:
-            for pt2 in contours_center_prev:
-                distance = math.hypot(pt2[0]-pt[0], pt2[1]-pt[1])
-                if distance < DISTANCE_PER_FRAME:
-                    detections[track_id] = pt
-                    track_id += 1
-                # if distance == 0:
-                #     try:
-                #         detections.pop(track_id)
-                #     except:
-                #         print("")
-    else:
-        detections_copy =  detections.copy()
-        contours_center_current_copy = contours_center_current.copy()
-        for object_id, pt2 in detections_copy.items():
-            obj_exists = False
-            for pt in contours_center_current_copy:
-                distance = math.hypot(pt2[0]-pt[0], pt2[1]-pt[1])
-                if distance < DISTANCE_PER_FRAME:
-                    detections[object_id] = pt
-                    obj_exists = True
-                    if pt in contours_center_current:
-                        contours_center_current.remove(pt)
-                    continue                
-            if not obj_exists:
-                detections.pop(object_id)
+    # --------------------------OBJECT TRACKING-----------------------------------------------------
+    detections_copy =  detections.copy()
+    contours_center_current_copy = contours_center_current.copy()
+    for object_id, pt2 in detections_copy.items():
+        obj_exists = False
+        for pt in contours_center_current_copy:
+            distance = math.hypot(pt2[0]-pt[0], pt2[1]-pt[1])
+            if distance < DISTANCE_PER_FRAME:
+                detections[object_id] = pt
+                obj_exists = True
+                if pt in contours_center_current:
+                    contours_center_current.remove(pt)
+                continue
+            
+        if not obj_exists:
+            detections.pop(object_id)
 
-        for pt in contours_center_current:
-            detections[track_id] = pt 
-            track_id +=1
+    for pt in contours_center_current:
+        detections[track_id] = pt 
+        track_id +=1
+    
+    contours_center_prev = contours_center_current.copy()
+
     # ----------------------------------------------------------------------------
     for object_id, pt in detections.items():
         cv.rectangle(frame, (pt[0]-20, pt[1]-20), (pt[0]+20,pt[1]+20), (0, 255, 0), 2)
@@ -132,7 +122,6 @@ while True:
             if (pt[0] < (roi[0]+roi[2]+ OFFSET) and pt[0] > roi[0] - OFFSET) and (pt[1]>roi[1] and pt[1] < roi[1]+roi[3]):
                 CARS[str(object_id)] = pt
     
-    contours_center_prev = contours_center_current.copy()
 
     cv.putText(frame, str(len(CARS)), (x2,y2), cv.FONT_HERSHEY_SIMPLEX, 1.0, COLORS[6], 3) 
 
@@ -141,6 +130,8 @@ while True:
 
     # cv.imshow("fr",frame)
     cv.imshow("fr2",frame2)
+        
+
 
     if cv.waitKey(25) & 0xFF == ord('q'):
         break
